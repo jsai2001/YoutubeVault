@@ -4,6 +4,13 @@ A shared, real-time synced library of YouTube links with a YouTube-lookalike dar
 UI. Paste a link, the app guesses a category for you, and it shows up instantly on
 every device watching the same stash. No login, no build step, no YouTube API key.
 
+**Live:** <https://tubestash.netlify.app/>
+
+> **First-run requirement:** the app renders only from the Firestore snapshot, so
+> it will sit on the loading skeleton forever until the Firestore security rules
+> are published (see [Firestore rules](#firestore-rules-required--console-step)).
+> Publishing the rules is a one-time manual step in the Firebase Console.
+
 - **Plain static site** — just `index.html`, `styles.css`, `app.js`. Drag the
   folder onto Netlify or open it through any static server. Zero config.
 - **Real-time sync** via Firebase Firestore (`onSnapshot`). Adds and removes
@@ -47,8 +54,10 @@ Then open <http://localhost:8000> (or the port the server prints).
 > Opening `index.html` straight from the filesystem (`file://`) also works in
 > most browsers, but a local server avoids occasional module/CORS quirks.
 
-Live reads and writes require the Firestore rules below to be published. Until
-then the UI loads fine but Firestore writes are rejected.
+Live reads **and** writes require the Firestore rules below to be published.
+Until then Firestore rejects the initial read with `permission-denied`, the
+first `onSnapshot` never arrives, and the page stays stuck on the loading
+skeleton. Publishing the rules (see below) is what makes the site work.
 
 ## Deploy to Netlify
 
