@@ -354,11 +354,35 @@ function wireUpApp() {
   // Firestore real-time listener (sole render trigger)
   // ==========================================================================
 
+  // Per-load shuffle: a seed fixed once when the page loads gives the grid a
+  // fresh random order on each visit, while staying stable across snapshots
+  // within the same session so adds/removes don't reshuffle everything. This
+  // is purely a display-order change computed in the browser — the Firestore
+  // query still orders by addedAt and no data is written or modified.
+  const shuffleSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+
+  // Deterministic 32-bit hash of (docId + seed) -> a stable sort key per doc
+  // for this session's seed. Same doc + same seed = same key all session;
+  // a new load picks a new seed, hence a new order.
+  function shuffleKey(docId) {
+    let h = shuffleSeed >>> 0;
+    const s = String(docId);
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+    }
+    return h;
+  }
+
+  function shuffledByLoad(links) {
+    return [...links].sort((a, b) => shuffleKey(a.id) - shuffleKey(b.id));
+  }
+
   const q = query(linksRef, orderBy("addedAt", "desc"));
   onSnapshot(
     q,
     (snapshot) => {
-      state.links = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const raw = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      state.links = shuffledByLoad(raw);
       state.firstSnapshotReceived = true;
       hideToast();
       renderGrid();

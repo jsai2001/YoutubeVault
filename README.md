@@ -15,6 +15,9 @@ every device watching the same stash. No login, no build step, no YouTube API ke
   folder onto Netlify or open it through any static server. Zero config.
 - **Real-time sync** via Firebase Firestore (`onSnapshot`). Adds and removes
   propagate to all open clients live.
+- **Shuffled on each load.** The grid is given a fresh random order every time
+  the page loads (stable across the session so adds/removes don't reshuffle).
+  This is a display-only change in the browser — nothing in Firestore changes.
 - **No YouTube Data API key.** Titles/channels are auto-filled through the public
   YouTube **oEmbed** endpoint (CORS-open, no key); thumbnails are derived directly
   from the video ID (`img.youtube.com/vi/<id>/hqdefault.jpg`).
