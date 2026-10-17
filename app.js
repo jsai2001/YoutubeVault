@@ -372,7 +372,28 @@ function wireUpApp() {
       hideToast();
       renderGrid();
     },
-    () => {
+    (error) => {
+      // Surfaced to devtools so a permission-denied (unpublished/incorrect
+      // Firestore rules) or any other listener failure is diagnosable
+      // instead of silent.
+      console.error("Firestore listener error:", error);
+
+      if (!state.firstSnapshotReceived) {
+        // Never got an initial snapshot: don't leave the skeleton spinning
+        // forever. Show an explicit, visible error state instead.
+        el.skeletonGrid.hidden = true;
+        el.cardGrid.hidden = true;
+        el.emptyFiltered.hidden = true;
+        el.emptyVault.hidden = true;
+        showToast(
+          error && error.code === "permission-denied"
+            ? "Can't load the stash — Firestore rules aren't published yet."
+            : "Can't load the stash — check your connection and reload."
+        );
+        return;
+      }
+
+      // Already have data on screen; treat this as a transient drop.
       showToast("Reconnecting…");
     }
   );
