@@ -802,6 +802,57 @@ select.text-input {
   display: none;
 }
 
+/* Action toast: quick-add confirmation with inline controls. */
+.action-toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+}
+
+.action-toast[hidden] {
+  display: none;
+}
+
+.action-toast {
+  max-width: calc(100vw - 32px);
+}
+
+.action-toast-msg {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.action-toast-select {
+  background: var(--yt-bg);
+  color: var(--yt-text-primary);
+  border: 1px solid var(--yt-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.action-toast-btn {
+  background: transparent;
+  color: var(--yt-accent);
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.action-toast-btn:hover {
+  background: var(--yt-surface-hover);
+}
+
 /* ==========================================================================
    Responsive: Tablet (<= 1024px)
    ========================================================================== */

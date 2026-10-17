@@ -133,8 +133,17 @@
     </div>
   </main>
 
-  <!-- Reconnecting toast -->
+  <!-- Reconnecting / status toast (text only) -->
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Action toast: shown after a quick-add, with Edit category / Undo -->
+  <div id="action-toast" class="toast action-toast" role="status" aria-live="polite" hidden>
+    <span id="action-toast-msg" class="action-toast-msg">Added</span>
+    <select id="action-toast-category" class="action-toast-select" aria-label="Change category">
+      <!-- Populated at runtime from CATEGORIES -->
+    </select>
+    <button type="button" id="action-toast-undo" class="action-toast-btn">Undo</button>
+  </div>
 
   <!-- Add-link modal -->
   <div id="add-link-modal" class="modal-overlay" hidden>
@@ -148,7 +157,7 @@
         </button>
       </div>
       <form id="add-link-form" class="modal-body">
-        <label class="field-label" for="url-input">YouTube URL</label>
+        <label class="field-label" for="url-input">Paste a YouTube link</label>
         <input
           id="url-input"
           type="text"
@@ -157,36 +166,14 @@
           autocomplete="off"
           required
         />
+        <p class="field-hint">It's added automatically — you can change the category or undo right after.</p>
         <p id="url-error" class="field-error" hidden>Couldn't recognize this as a YouTube video link</p>
-        <p id="duplicate-warning" class="field-warning" hidden>
-          This video is already in your stash.
-          <button type="button" id="add-anyway-btn" class="link-btn">Add anyway</button>
-        </p>
-        <p id="fetch-status" class="field-hint" hidden>Fetching details…</p>
-
-        <div id="preview-section" class="preview-section" hidden>
-          <div class="preview-thumb-wrap">
-            <img id="preview-thumb" class="preview-thumb" alt="" />
-          </div>
-
-          <label class="field-label" for="title-input">Title</label>
-          <input id="title-input" type="text" class="text-input" required maxlength="500" />
-          <p class="field-hint">Auto-filled when available — edit as needed</p>
-
-          <label class="field-label" for="channel-input">Channel</label>
-          <input id="channel-input" type="text" class="text-input" maxlength="200" />
-
-          <label class="field-label" for="category-select">Category</label>
-          <select id="category-select" class="text-input" required>
-            <!-- Populated at runtime from CATEGORIES -->
-          </select>
-        </div>
-
+        <p id="fetch-status" class="field-hint" hidden>Adding…</p>
         <p id="save-error" class="field-error" hidden>Couldn't save this link — check your connection and try again.</p>
 
         <div class="modal-actions">
           <button type="button" class="btn-secondary" data-close-modal="add-link-modal">Cancel</button>
-          <button type="submit" id="save-link-btn" class="btn-primary" disabled>Save</button>
+          <button type="submit" id="add-link-submit" class="btn-primary">Add</button>
         </div>
       </form>
     </div>

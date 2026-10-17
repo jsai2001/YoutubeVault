@@ -13,10 +13,8 @@ import {
   addDoc,
   deleteDoc,
   doc,
-  getDocs,
   onSnapshot,
   query,
-  where,
   orderBy,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
@@ -60,7 +58,6 @@ function wireUpApp() {
     searchTerm: "",
     playingVideoId: null,
     playingDocId: null,
-    pendingVideoMeta: null, // { videoId, url, thumbnailUrl } staged in add-link modal
     pendingRemoveDocId: null,
   };
 
@@ -84,21 +81,17 @@ function wireUpApp() {
     gridStatus: document.getElementById("grid-status"),
 
     toast: document.getElementById("toast"),
+    actionToast: document.getElementById("action-toast"),
+    actionToastMsg: document.getElementById("action-toast-msg"),
+    actionToastCategory: document.getElementById("action-toast-category"),
+    actionToastUndo: document.getElementById("action-toast-undo"),
 
     addLinkModal: document.getElementById("add-link-modal"),
     addLinkForm: document.getElementById("add-link-form"),
     urlInput: document.getElementById("url-input"),
     urlError: document.getElementById("url-error"),
-    duplicateWarning: document.getElementById("duplicate-warning"),
-    addAnywayBtn: document.getElementById("add-anyway-btn"),
     fetchStatus: document.getElementById("fetch-status"),
-    previewSection: document.getElementById("preview-section"),
-    previewThumb: document.getElementById("preview-thumb"),
-    titleInput: document.getElementById("title-input"),
-    channelInput: document.getElementById("channel-input"),
-    categorySelect: document.getElementById("category-select"),
     saveError: document.getElementById("save-error"),
-    saveLinkBtn: document.getElementById("save-link-btn"),
 
     playbackModal: document.getElementById("playback-modal"),
     playerWrap: document.getElementById("player-wrap"),
@@ -112,8 +105,6 @@ function wireUpApp() {
     confirmRemoveBtn: document.getElementById("confirm-remove-btn"),
   };
 
-  let duplicateOverride = false;
-  let allowDuplicateCheckedId = null;
 
   // ---- Sidebar: populate category nav ----
   for (const cat of CATEGORIES) {
@@ -129,12 +120,12 @@ function wireUpApp() {
     el.categoryNavList.appendChild(li);
   }
 
-  // ---- Add-link modal: populate category select ----
+  // ---- Action toast: populate category select ----
   for (const cat of CATEGORIES) {
-    const opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat;
-    el.categorySelect.appendChild(opt);
+    const toastOpt = document.createElement("option");
+    toastOpt.value = cat;
+    toastOpt.textContent = cat;
+    el.actionToastCategory.appendChild(toastOpt);
   }
 
   // ---- Loading skeleton (8 cards) ----
@@ -475,14 +466,8 @@ function wireUpApp() {
   function resetAddLinkForm() {
     el.addLinkForm.reset();
     el.urlError.hidden = true;
-    el.duplicateWarning.hidden = true;
     el.fetchStatus.hidden = true;
-    el.previewSection.hidden = true;
     el.saveError.hidden = true;
-    el.saveLinkBtn.disabled = true;
-    state.pendingVideoMeta = null;
-    duplicateOverride = false;
-    allowDuplicateCheckedId = null;
   }
 
   function openAddLinkModal() {
@@ -493,105 +478,44 @@ function wireUpApp() {
   el.addLinkBtn.addEventListener("click", openAddLinkModal);
   el.emptyVaultAddBtn.addEventListener("click", openAddLinkModal);
 
+  // Quick-add: a valid URL is saved immediately (no Save step). The action
+  // toast then offers Undo and an inline category change. `isAdding` guards
+  // against a double-add if the user pastes, then hits Enter before the
+  // debounced add fires.
+  let isAdding = false;
+
   let urlDebounceId = null;
   el.urlInput.addEventListener("input", () => {
     clearTimeout(urlDebounceId);
     el.urlError.hidden = true;
-    el.duplicateWarning.hidden = true;
-    duplicateOverride = false;
-    urlDebounceId = setTimeout(handleUrlInput, 300);
+    urlDebounceId = setTimeout(handleUrlInput, 400);
+  });
+
+  // Enter in the URL field triggers the add immediately (skip the debounce).
+  el.addLinkForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearTimeout(urlDebounceId);
+    handleUrlInput();
   });
 
   async function handleUrlInput() {
+    if (isAdding) return;
+
     const rawUrl = el.urlInput.value.trim();
-    if (!rawUrl) {
-      el.previewSection.hidden = true;
-      el.saveLinkBtn.disabled = true;
-      return;
-    }
+    if (!rawUrl) return;
 
     const videoId = extractVideoId(rawUrl);
     if (!videoId) {
       el.urlError.hidden = false;
-      el.previewSection.hidden = true;
-      el.saveLinkBtn.disabled = true;
       return;
     }
     el.urlError.hidden = true;
 
+    isAdding = true;
     el.fetchStatus.hidden = false;
-    el.previewSection.hidden = true;
-    el.saveLinkBtn.disabled = true;
-
-    const meta = await fetchMetadata(videoId, rawUrl);
-    el.fetchStatus.hidden = true;
-
-    state.pendingVideoMeta = { videoId, url: rawUrl, thumbnailUrl: meta.thumbnailUrl };
-
-    el.previewThumb.src = meta.thumbnailUrl;
-    el.previewThumb.alt = meta.title || "Video preview";
-    el.previewThumb.onerror = () => {
-      el.previewThumb.src =
-        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Crect width='160' height='90' fill='%23212121'/%3E%3Ctext x='50%25' y='50%25' fill='%23aaaaaa' font-size='10' text-anchor='middle' dy='.3em'%3ENo thumbnail%3C/text%3E%3C/svg%3E";
-    };
-    el.titleInput.value = meta.title;
-    el.channelInput.value = meta.channel;
-    el.categorySelect.value = guessCategory(meta.title, meta.channel);
-    el.previewSection.hidden = false;
-
-    // Enable Save as soon as we have a video ID + title. This must not depend
-    // on the duplicate check below completing — a slow or hung getDocs round
-    // trip would otherwise leave the button permanently disabled.
-    updateSaveButtonState();
-
-    // Duplicate check (one-shot, not a listener). Purely advisory.
-    if (allowDuplicateCheckedId !== videoId) {
-      allowDuplicateCheckedId = videoId;
-      try {
-        const dupSnap = await getDocs(query(linksRef, where("videoId", "==", videoId)));
-        el.duplicateWarning.hidden = dupSnap.empty;
-      } catch {
-        // Non-fatal: if the duplicate check itself fails, don't block adding.
-      }
-    }
-  }
-
-  el.addAnywayBtn.addEventListener("click", () => {
-    duplicateOverride = true;
-    el.duplicateWarning.hidden = true;
-    updateSaveButtonState();
-  });
-
-  el.titleInput.addEventListener("input", updateSaveButtonState);
-
-  function updateSaveButtonState() {
-    const hasMeta = !!state.pendingVideoMeta;
-    const hasTitle = el.titleInput.value.trim().length > 0;
-    el.saveLinkBtn.disabled = !(hasMeta && hasTitle);
-  }
-
-  el.addLinkForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!state.pendingVideoMeta) return;
-
-    const { videoId, url, thumbnailUrl } = state.pendingVideoMeta;
-    const title = el.titleInput.value.trim();
-    const channel = el.channelInput.value.trim();
-    const category = el.categorySelect.value;
-
-    el.saveError.hidden = true;
-    el.saveLinkBtn.disabled = true;
 
     try {
-      await addDoc(linksRef, {
-        videoId,
-        url,
-        title,
-        channel,
-        thumbnailUrl,
-        category,
-        addedAt: serverTimestamp(),
-      });
+      await quickAddLink(videoId, rawUrl);
       closeModal(el.addLinkModal);
       resetAddLinkForm();
     } catch (err) {
@@ -599,9 +523,104 @@ function wireUpApp() {
       // firestore.rules hasn't been published yet, invalid-argument for a
       // malformed payload, or a network error) so the failure is
       // diagnosable in devtools instead of silent.
-      console.error("addDoc failed:", err);
+      console.error("quick add failed:", err);
       el.saveError.hidden = false;
-      el.saveLinkBtn.disabled = false;
+    } finally {
+      el.fetchStatus.hidden = true;
+      isAdding = false;
+    }
+  }
+
+  // Fetches metadata, guesses a category, and writes one link document.
+  // Titles from oEmbed are usually empty in production (CORS), and Firestore
+  // rules reject an empty title, so fall back to a non-empty placeholder the
+  // user can correct via the action toast's category editor or by re-adding.
+  async function quickAddLink(videoId, rawUrl) {
+    const meta = await fetchMetadata(videoId, rawUrl);
+    const title = meta.title.trim() || `YouTube video ${videoId}`;
+    const channel = meta.channel.trim();
+    const category = guessCategory(meta.title, meta.channel);
+
+    const ref = await addDoc(linksRef, {
+      videoId,
+      url: rawUrl,
+      title,
+      channel,
+      thumbnailUrl: meta.thumbnailUrl,
+      category,
+      addedAt: serverTimestamp(),
+    });
+
+    showActionToast(ref.id, title, category, { videoId, url: rawUrl, channel, thumbnailUrl: meta.thumbnailUrl });
+  }
+
+  // ==========================================================================
+  // Action toast (quick-add: Undo + inline category change)
+  // ==========================================================================
+
+  let actionToastTimerId = null;
+  let actionToastDocId = null;
+  let actionToastSnapshot = null; // the written fields, for delete+re-add on category change
+
+  function showActionToast(docId, title, category, fields) {
+    actionToastDocId = docId;
+    actionToastSnapshot = { ...fields, title, category };
+
+    const shortTitle = title.length > 40 ? title.slice(0, 39) + "…" : title;
+    el.actionToastMsg.textContent = `Added “${shortTitle}”`;
+    el.actionToastCategory.value = category;
+    el.actionToast.hidden = false;
+
+    clearTimeout(actionToastTimerId);
+    actionToastTimerId = setTimeout(hideActionToast, 6000);
+  }
+
+  function hideActionToast() {
+    el.actionToast.hidden = true;
+    actionToastDocId = null;
+    actionToastSnapshot = null;
+    clearTimeout(actionToastTimerId);
+  }
+
+  el.actionToastUndo.addEventListener("click", async () => {
+    const docId = actionToastDocId;
+    hideActionToast();
+    if (!docId) return;
+    try {
+      await deleteDoc(doc(db, "links", docId));
+    } catch {
+      showToast("Couldn't undo — try removing it from the grid.");
+    }
+  });
+
+  // No in-place update exists (rules forbid update), so changing the category
+  // deletes the just-added doc and re-adds it with the new category. The new
+  // doc id replaces the one the toast is tracking so Undo still works.
+  el.actionToastCategory.addEventListener("change", async () => {
+    const oldDocId = actionToastDocId;
+    const snap = actionToastSnapshot;
+    const newCategory = el.actionToastCategory.value;
+    if (!oldDocId || !snap || newCategory === snap.category) return;
+
+    clearTimeout(actionToastTimerId);
+    try {
+      const ref = await addDoc(linksRef, {
+        videoId: snap.videoId,
+        url: snap.url,
+        title: snap.title,
+        channel: snap.channel,
+        thumbnailUrl: snap.thumbnailUrl,
+        category: newCategory,
+        addedAt: serverTimestamp(),
+      });
+      await deleteDoc(doc(db, "links", oldDocId));
+      // Keep the toast open and tracking the new doc for a further change/undo.
+      actionToastDocId = ref.id;
+      actionToastSnapshot = { ...snap, category: newCategory };
+      actionToastTimerId = setTimeout(hideActionToast, 6000);
+    } catch {
+      showToast("Couldn't change the category — try again.");
+      hideActionToast();
     }
   });
 

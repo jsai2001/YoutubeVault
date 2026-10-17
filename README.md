@@ -114,14 +114,23 @@ strings, `category` is one of the 12 presets, `thumbnailUrl` is a string, and
 
 ## How a link is added
 
-1. You paste a URL. The app parses the video ID from `youtube.com/watch?v=`,
-   `youtu.be/`, `youtube.com/shorts/`, and `youtube.com/live/` forms.
-2. It fetches the title and channel from YouTube oEmbed (no key). The thumbnail
-   comes from the video ID directly, so it works even if oEmbed is unavailable.
-3. The app guesses a category from the title/channel and pre-selects it — change
-   it before saving if it guessed wrong.
-4. Saving writes one document to the `links` collection; removing deletes it.
-   Both changes sync to every open client in real time.
+Adding is one step — paste a link and it's saved immediately, no confirmation.
+
+1. Click **Add**, paste a URL. The app parses the video ID from
+   `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/shorts/`, and
+   `youtube.com/live/` forms. A valid link is added the moment you finish
+   pasting (or press Enter); an unrecognized link shows an inline error instead.
+2. The app fetches the title and channel from YouTube oEmbed (no key), guesses a
+   category from them, and writes the document. The thumbnail comes from the
+   video ID directly, so it always works even if oEmbed is unavailable. If
+   oEmbed returns nothing (common in production due to CORS), the link is saved
+   with a placeholder title you can fix by removing and re-adding.
+3. A confirmation toast appears for a few seconds with two controls:
+   - **Category dropdown** — change the guessed category on the spot (since
+     documents are immutable, this re-adds the link under the new category).
+   - **Undo** — removes the link you just added.
+4. Removing a link deletes its document. Every add, category change, and remove
+   syncs to every open client in real time.
 
 ## Firebase configuration
 
