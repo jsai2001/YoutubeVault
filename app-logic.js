@@ -47,8 +47,6 @@ export const CATEGORY_ICONS = {
 
 const VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 const OEMBED_TIMEOUT_MS = 4000;
-const MAX_TAGS = 15;
-const MAX_TAG_LENGTH = 50;
 
 /**
  * Parses a YouTube video ID out of a URL string.
@@ -107,24 +105,8 @@ export function categoryColor(category) {
 }
 
 /**
- * Parses a freeform comma-separated tag string into a normalized array:
- * trimmed, lowercased, empty entries dropped, capped at MAX_TAGS entries
- * and MAX_TAG_LENGTH characters each.
- * @param {string} rawTags
- * @returns {string[]}
- */
-export function parseTags(rawTags) {
-  if (!rawTags) return [];
-  return String(rawTags)
-    .split(",")
-    .map((t) => t.trim().toLowerCase())
-    .filter((t) => t.length > 0)
-    .map((t) => t.slice(0, MAX_TAG_LENGTH))
-    .slice(0, MAX_TAGS);
-}
-
-/**
  * Pure filter over an in-memory links array by category and search term.
+ * Search matches only title and channel.
  * @param {Array<object>} links
  * @param {{category?: string, searchTerm?: string}} opts
  * @returns {Array<object>}
@@ -134,9 +116,54 @@ export function filterLinks(links, { category = "All", searchTerm = "" } = {}) {
   return links.filter((link) => {
     if (category !== "All" && link.category !== category) return false;
     if (!term) return true;
-    const haystacks = [link.title ?? "", link.channel ?? "", ...(link.tags ?? [])];
+    const haystacks = [link.title ?? "", link.channel ?? ""];
     return haystacks.some((h) => String(h).toLowerCase().includes(term));
   });
+}
+
+/**
+ * Keyword/substring lists used by guessCategory, one entry per CATEGORIES
+ * value (excluding "Other", which is the no-match fallback). Order matches
+ * CATEGORIES so the first category with a matching keyword wins — the lists
+ * are chosen to minimize cross-category overlap, so first-match-wins is
+ * deterministic in practice without needing a scoring/ranking step.
+ */
+export const KEYWORDS_BY_CATEGORY = {
+  Music: ["music", "song", "lyrics", "album", "official audio", "ft.", "remix", "cover", "acoustic"],
+  Gaming: ["gameplay", "gaming", "playthrough", "esports", "walkthrough", "speedrun", "let's play", "minecraft", "fortnite"],
+  Education: ["course", "lecture", "how to", "learn", "explained", "lesson", "study guide"],
+  Tech: ["review", "unboxing", "benchmark", "coding", "programming", "software", "gadget", "smartphone", "ai "],
+  Comedy: ["comedy", "funny", "prank", "sketch", "stand-up", "parody", "meme"],
+  Sports: ["highlights", "football match", "basketball", "nba", "fifa", "olympics", "tournament"],
+  News: ["news", "breaking", "report", "headlines", "politics", "election"],
+  Cooking: ["recipe", "cooking", "kitchen", "baking", "chef", "food review", "meal prep"],
+  Travel: ["travel", "vlog", "trip", "destination", "backpacking", "tour guide"],
+  Fitness: ["workout", "fitness", "gym", "yoga", "exercise", "training", "cardio"],
+  "Movies/TV": ["trailer", "movie", "film", "episode", "season", "series", "official clip"],
+};
+
+/**
+ * Guesses the best category for a link from its title and channel, by
+ * deterministic lower-cased keyword/substring matching against
+ * KEYWORDS_BY_CATEGORY, tested in CATEGORIES order (first match wins).
+ * Returns "Other" if nothing matches. Pure and side-effect-free — the
+ * add-link modal pre-selects this result in the category <select> but
+ * leaves it fully visible and changeable before Save, never a silent or
+ * locked-in choice.
+ * @param {string} title
+ * @param {string} channel
+ * @returns {string} one of the CATEGORIES values
+ */
+export function guessCategory(title, channel) {
+  const haystack = `${title ?? ""} ${channel ?? ""}`.toLowerCase();
+  for (const category of CATEGORIES) {
+    const keywords = KEYWORDS_BY_CATEGORY[category];
+    if (!keywords) continue;
+    if (keywords.some((keyword) => haystack.includes(keyword))) {
+      return category;
+    }
+  }
+  return "Other";
 }
 
 /**

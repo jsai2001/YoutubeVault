@@ -447,14 +447,6 @@ button {
   white-space: nowrap;
 }
 
-.tag-chips {
-  font-size: 12px;
-  color: var(--yt-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 @media (hover: hover) {
   .video-card:hover .thumbnail {
     transform: scale(1.03);

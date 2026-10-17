@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vault — Your YouTube Link Library</title>
-  <meta name="description" content="A shared, synced vault of YouTube links with categories and tags." />
+  <meta name="description" content="A shared, synced vault of YouTube links organized by category." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -43,7 +43,7 @@
           id="search-input"
           type="text"
           class="search-input"
-          placeholder="Search title, channel, or tag"
+          placeholder="Search title or channel"
           aria-label="Search your vault"
           autocomplete="off"
         />
@@ -166,16 +166,6 @@
           <select id="category-select" class="text-input" required>
             <!-- Populated at runtime from CATEGORIES -->
           </select>
-
-          <label class="field-label" for="tags-input">Tags</label>
-          <input
-            id="tags-input"
-            type="text"
-            class="text-input"
-            placeholder="comma, separated, tags"
-            maxlength="800"
-          />
-          <p class="field-hint">Up to 15 tags, 50 characters each</p>
         </div>
 
         <p id="save-error" class="field-error" hidden>Couldn't save this link — check your connection and try again.</p>
@@ -206,7 +196,6 @@
           <p id="player-channel" class="player-channel"></p>
           <div class="player-meta">
             <span id="player-category" class="category-pill"></span>
-            <span id="player-tags" class="tag-chips"></span>
           </div>
           <button id="player-remove-btn" class="btn-danger">Remove from vault</button>
         </div>

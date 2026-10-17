@@ -9,7 +9,7 @@
 // under plain Node.
 
 import assert from "node:assert";
-import { extractVideoId, categoryColor, parseTags, filterLinks, CATEGORIES } from "./app-logic.js";
+import { extractVideoId, categoryColor, guessCategory, filterLinks, CATEGORIES } from "./app-logic.js";
 
 let passed = 0;
 function test(name, fn) {
@@ -111,37 +111,69 @@ test("categoryColor: distinct hues for distinct categories", () => {
   assert.strictEqual(colors.size, CATEGORIES.length);
 });
 
-// ---- parseTags ----
+// ---- guessCategory ----
 
-test("parseTags: comma-split, trimmed, lowercased", () => {
-  assert.deepStrictEqual(parseTags(" Foo, Bar ,BAZ"), ["foo", "bar", "baz"]);
+test("guessCategory: Music", () => {
+  assert.strictEqual(guessCategory("New Song - Official Audio", "SomeArtist"), "Music");
 });
 
-test("parseTags: empty entries dropped", () => {
-  assert.deepStrictEqual(parseTags("foo,,  ,bar"), ["foo", "bar"]);
+test("guessCategory: Gaming", () => {
+  assert.strictEqual(guessCategory("Minecraft Let's Play Episode 1", "GamerChannel"), "Gaming");
 });
 
-test("parseTags: caps at 15 tags", () => {
-  const many = Array.from({ length: 20 }, (_, i) => `tag${i}`).join(",");
-  assert.strictEqual(parseTags(many).length, 15);
+test("guessCategory: Education", () => {
+  assert.strictEqual(guessCategory("Python Tutorial for Beginners", "LearnWithMe"), "Education");
 });
 
-test("parseTags: caps at 50 chars per tag", () => {
-  const longTag = "a".repeat(80);
-  assert.strictEqual(parseTags(longTag)[0].length, 50);
+test("guessCategory: Tech", () => {
+  assert.strictEqual(guessCategory("iPhone 15 Unboxing and Review", "TechDaily"), "Tech");
 });
 
-test("parseTags: empty/undefined input returns empty array", () => {
-  assert.deepStrictEqual(parseTags(""), []);
-  assert.deepStrictEqual(parseTags(undefined), []);
+test("guessCategory: Comedy", () => {
+  assert.strictEqual(guessCategory("Funny Prank Compilation", "LaughTrack"), "Comedy");
+});
+
+test("guessCategory: Sports", () => {
+  assert.strictEqual(guessCategory("NBA Highlights Tonight", "SportsCenter"), "Sports");
+});
+
+test("guessCategory: News", () => {
+  assert.strictEqual(guessCategory("Breaking News Report", "NewsNetwork"), "News");
+});
+
+test("guessCategory: Cooking", () => {
+  assert.strictEqual(
+    guessCategory("Full Pasta Recipe Tutorial", "ChefLife"),
+    "Cooking"
+  );
+});
+
+test("guessCategory: Travel", () => {
+  assert.strictEqual(guessCategory("Backpacking Through Japan Vlog", "WanderLust"), "Travel");
+});
+
+test("guessCategory: Fitness", () => {
+  assert.strictEqual(guessCategory("Full Body Workout at the Gym", "FitLife"), "Fitness");
+});
+
+test("guessCategory: Movies/TV", () => {
+  assert.strictEqual(guessCategory("Official Trailer - Season 2", "StreamingNetwork"), "Movies/TV");
+});
+
+test("guessCategory: Other (no keyword match)", () => {
+  assert.strictEqual(guessCategory("Random words with no keyword match", "SomeChannel"), "Other");
+});
+
+test("guessCategory: case-insensitive matching", () => {
+  assert.strictEqual(guessCategory("FULL PASTA RECIPE TUTORIAL", "CHEFLIFE"), "Cooking");
 });
 
 // ---- filterLinks ----
 
 const sampleLinks = [
-  { id: "1", title: "Lo-fi Beats", channel: "ChillHop", category: "Music", tags: ["lofi", "chill"] },
-  { id: "2", title: "React Tutorial", channel: "DevEd", category: "Tech", tags: ["react", "js"] },
-  { id: "3", title: "Cooking Pasta", channel: "ChefLife", category: "Cooking", tags: ["pasta", "italian"] },
+  { id: "1", title: "Lo-fi Beats", channel: "ChillHop", category: "Music" },
+  { id: "2", title: "React Tutorial", channel: "DevEd", category: "Tech" },
+  { id: "3", title: "Cooking Pasta", channel: "ChefLife", category: "Cooking" },
 ];
 
 test("filterLinks: category filter", () => {
@@ -166,14 +198,8 @@ test("filterLinks: search by channel", () => {
   assert.strictEqual(result[0].id, "2");
 });
 
-test("filterLinks: search by tag", () => {
-  const result = filterLinks(sampleLinks, { category: "All", searchTerm: "chill" });
-  assert.strictEqual(result.length, 1);
-  assert.strictEqual(result[0].id, "1");
-});
-
 test("filterLinks: category + search combined", () => {
-  const result = filterLinks(sampleLinks, { category: "Music", searchTerm: "lofi" });
+  const result = filterLinks(sampleLinks, { category: "Music", searchTerm: "beats" });
   assert.strictEqual(result.length, 1);
   assert.strictEqual(result[0].id, "1");
 });

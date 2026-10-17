@@ -1,7 +1,7 @@
 # Vault — YouTube Link Vault
 
 A shared, real-time synced library of YouTube links with a YouTube-lookalike dark
-UI. Paste a link, pick a category, add a few tags, and it shows up instantly on
+UI. Paste a link, the app guesses a category for you, and it shows up instantly on
 every device watching the same vault. No login, no build step, no YouTube API key.
 
 - **Plain static site** — just `index.html`, `styles.css`, `app.js`. Drag the
@@ -11,8 +11,9 @@ every device watching the same vault. No login, no build step, no YouTube API ke
 - **No YouTube Data API key.** Titles/channels are auto-filled through the public
   YouTube **oEmbed** endpoint (CORS-open, no key); thumbnails are derived directly
   from the video ID (`img.youtube.com/vi/<id>/hqdefault.jpg`).
-- **Manual categorization.** Category is a dropdown from a fixed preset; tags are
-  freeform comma-separated input.
+- **Auto-guessed category, with override.** Category is a dropdown from a fixed
+  preset, pre-selected by matching keywords in the title/channel — you can
+  change it before saving if the guess is wrong.
 - **No authentication** — this is an open, shared vault. Anyone with the page can
   read, add, and remove links.
 
@@ -78,9 +79,8 @@ code; they must be pasted into the Firebase Console by the project owner:
 
 These rules make the `links` collection publicly readable and writable (no auth),
 but validate every document's shape — `url`/`title`/`channel` are non-empty
-strings, `category` is one of the 12 presets, `tags` is a list of strings,
-`thumbnailUrl` is a string, and `addedAt` is a server timestamp. Every path
-outside `links` is denied.
+strings, `category` is one of the 12 presets, `thumbnailUrl` is a string, and
+`addedAt` is a server timestamp. Every path outside `links` is denied.
 
 ## How a link is added
 
@@ -88,7 +88,8 @@ outside `links` is denied.
    `youtu.be/`, `youtube.com/shorts/`, and `youtube.com/live/` forms.
 2. It fetches the title and channel from YouTube oEmbed (no key). The thumbnail
    comes from the video ID directly, so it works even if oEmbed is unavailable.
-3. You pick a category and type any tags.
+3. The app guesses a category from the title/channel and pre-selects it — change
+   it before saving if it guessed wrong.
 4. Saving writes one document to the `links` collection; removing deletes it.
    Both changes sync to every open client in real time.
 

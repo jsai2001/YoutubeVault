@@ -20,9 +20,9 @@ service cloud.firestore {
     // Shape + size validation for a new link document.
     function isValidLink(d) {
       return d.keys().hasOnly(
-               ['videoId','url','title','channel','thumbnailUrl','category','tags','addedAt'])
+               ['videoId','url','title','channel','thumbnailUrl','category','addedAt'])
           && d.keys().hasAll(
-               ['videoId','url','title','channel','thumbnailUrl','category','tags','addedAt'])
+               ['videoId','url','title','channel','thumbnailUrl','category','addedAt'])
           && d.videoId is string      && d.videoId.size() == 11
           && d.url is string          && d.url.size() > 0   && d.url.size() <= 500
           && d.title is string        && d.title.size() > 0 && d.title.size() <= 500
@@ -30,46 +30,7 @@ service cloud.firestore {
           && d.thumbnailUrl is string && d.thumbnailUrl.size() <= 500
           && d.category in ['Music','Gaming','Education','Tech','Comedy','Sports',
                             'News','Cooking','Travel','Fitness','Movies/TV','Other']
-          && d.tags is list           && d.tags.size() <= 15
-          && isValidTags(d.tags)
           && d.addedAt == request.time;
-    }
-
-    // Per-element type check for tags, unrolled up to the 15-entry cap enforced
-    // above. Firestore rules have no loop/map construct, but since the list
-    // length is already bounded by isValidLink before this runs, a fixed-depth
-    // unrolled check is mechanically expressible and cheap. This exists because
-    // isValidLink only checked `tags is list` + count — nothing stopped a
-    // non-UI writer (anyone calling the SDK directly, bypassing app.js) from
-    // submitting a list containing numbers/objects/null, which would pass that
-    // check and then throw inside every subscribed client's render/filter path
-    // (`.toLowerCase()`/`.includes()` called on a non-string tag) the next time
-    // `onSnapshot` fires — a single malformed write poisoning the shared vault
-    // for everyone until someone deletes it from the console. This function
-    // closes that gap at the write boundary instead of relying on a defensive
-    // guard in app.js's render path.
-    function isValidTags(tags) {
-      // Explicitly parenthesized: (all-elements-are-strings), independent of
-      // the size==0 short-circuit — CEL's `&&` binds tighter than `||`, so this
-      // grouping is what the operator precedence already produces, but it is
-      // written out explicitly rather than relied on implicitly.
-      return tags.size() == 0 || (
-        (tags.size() < 1  || tags[0]  is string) &&
-        (tags.size() < 2  || tags[1]  is string) &&
-        (tags.size() < 3  || tags[2]  is string) &&
-        (tags.size() < 4  || tags[3]  is string) &&
-        (tags.size() < 5  || tags[4]  is string) &&
-        (tags.size() < 6  || tags[5]  is string) &&
-        (tags.size() < 7  || tags[6]  is string) &&
-        (tags.size() < 8  || tags[7]  is string) &&
-        (tags.size() < 9  || tags[8]  is string) &&
-        (tags.size() < 10 || tags[9]  is string) &&
-        (tags.size() < 11 || tags[10] is string) &&
-        (tags.size() < 12 || tags[11] is string) &&
-        (tags.size() < 13 || tags[12] is string) &&
-        (tags.size() < 14 || tags[13] is string) &&
-        (tags.size() < 15 || tags[14] is string)
-      );
     }
 
     // Everything outside `links` is denied, read and write.

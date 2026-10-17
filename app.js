@@ -25,13 +25,13 @@ import {
   CATEGORY_ICONS,
   extractVideoId,
   categoryColor,
-  parseTags,
+  guessCategory,
   filterLinks,
   thumbnailUrlFor,
   fetchMetadata,
 } from "./app-logic.js";
 
-export { CATEGORIES, extractVideoId, categoryColor, parseTags, filterLinks, thumbnailUrlFor, fetchMetadata };
+export { CATEGORIES, extractVideoId, categoryColor, guessCategory, filterLinks, thumbnailUrlFor, fetchMetadata };
 
 const firebaseConfig = {
   apiKey: "AIzaSyDaaVHzL02tsIRBhCqmVXjxfpsVylyLpYA",
@@ -97,7 +97,6 @@ function wireUpApp() {
     titleInput: document.getElementById("title-input"),
     channelInput: document.getElementById("channel-input"),
     categorySelect: document.getElementById("category-select"),
-    tagsInput: document.getElementById("tags-input"),
     saveError: document.getElementById("save-error"),
     saveLinkBtn: document.getElementById("save-link-btn"),
 
@@ -106,7 +105,6 @@ function wireUpApp() {
     playerTitle: document.getElementById("player-title"),
     playerChannel: document.getElementById("player-channel"),
     playerCategory: document.getElementById("player-category"),
-    playerTags: document.getElementById("player-tags"),
     playerRemoveBtn: document.getElementById("player-remove-btn"),
 
     confirmModal: document.getElementById("confirm-modal"),
@@ -276,7 +274,6 @@ function wireUpApp() {
     card.className = "video-card";
     card.dataset.docId = link.id;
 
-    const tagsText = (link.tags ?? []).slice(0, 3).join(" · ");
     const color = categoryColor(link.category);
 
     card.innerHTML = `
@@ -295,7 +292,6 @@ function wireUpApp() {
           <p class="card-channel">${escapeHtml(link.channel || "")}</p>
           <div class="card-sub">
             <span class="category-pill" style="background:${color}">${escapeHtml(link.category)}</span>
-            ${tagsText ? `<span class="tag-chips">${escapeHtml(tagsText)}</span>` : ""}
           </div>
         </div>
       </div>
@@ -519,6 +515,7 @@ function wireUpApp() {
     };
     el.titleInput.value = meta.title;
     el.channelInput.value = meta.channel;
+    el.categorySelect.value = guessCategory(meta.title, meta.channel);
     el.previewSection.hidden = false;
 
     // Enable Save as soon as we have a video ID + title. This must not depend
@@ -560,7 +557,6 @@ function wireUpApp() {
     const title = el.titleInput.value.trim();
     const channel = el.channelInput.value.trim();
     const category = el.categorySelect.value;
-    const tags = parseTags(el.tagsInput.value);
 
     el.saveError.hidden = true;
     el.saveLinkBtn.disabled = true;
@@ -573,12 +569,16 @@ function wireUpApp() {
         channel,
         thumbnailUrl,
         category,
-        tags,
         addedAt: serverTimestamp(),
       });
       closeModal(el.addLinkModal);
       resetAddLinkForm();
-    } catch {
+    } catch (err) {
+      // Log the real Firebase error (e.g. permission-denied if
+      // firestore.rules hasn't been published yet, invalid-argument for a
+      // malformed payload, or a network error) so the failure is
+      // diagnosable in devtools instead of silent.
+      console.error("addDoc failed:", err);
       el.saveError.hidden = false;
       el.saveLinkBtn.disabled = false;
     }
@@ -604,7 +604,6 @@ function wireUpApp() {
     el.playerChannel.textContent = link.channel || "";
     el.playerCategory.textContent = link.category;
     el.playerCategory.style.background = categoryColor(link.category);
-    el.playerTags.textContent = (link.tags ?? []).join(" · ");
 
     openModal(el.playbackModal);
   }
