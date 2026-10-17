@@ -157,6 +157,10 @@ every word you type must appear somewhere in the link (in any order). So
 `lofi guitar` finds a video whose title has both words, and `music chill` can
 match via the category plus the title.
 
+On mobile, the search bar opens from the magnifier icon and **auto-closes after
+5 seconds of inactivity** — but only when the box is empty, so a filter you've
+typed and are reading is never collapsed out from under you.
+
 ## Firebase configuration
 
 The `firebaseConfig` embedded in `app.js` is the project's **public** web config

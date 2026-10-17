@@ -230,11 +230,46 @@ function wireUpApp() {
     renderGrid();
   });
 
+  // ---- Mobile search overlay: open/close + auto-close on inactivity ----
+  // The overlay (header .search-open on mobile) auto-collapses back to the
+  // magnifier after 5s of inactivity, but only when the box is empty — so a
+  // typed-in filter you're reading is never snapped shut on you.
+  const SEARCH_IDLE_MS = 5000;
+  let searchIdleTimerId = null;
+
+  function isSearchOpen() {
+    return el.header.classList.contains("search-open");
+  }
+
+  function closeMobileSearch() {
+    clearTimeout(searchIdleTimerId);
+    el.header.classList.remove("search-open");
+  }
+
+  function scheduleSearchAutoClose() {
+    clearTimeout(searchIdleTimerId);
+    if (!isSearchOpen()) return;
+    searchIdleTimerId = setTimeout(() => {
+      // Only auto-close when idle AND the box is empty.
+      if (isSearchOpen() && el.searchInput.value.trim() === "") {
+        closeMobileSearch();
+      }
+    }, SEARCH_IDLE_MS);
+  }
+
   el.mobileSearchToggle.addEventListener("click", () => {
     el.header.classList.toggle("search-open");
-    if (el.header.classList.contains("search-open")) {
+    if (isSearchOpen()) {
       el.searchInput.focus();
+      scheduleSearchAutoClose();
+    } else {
+      clearTimeout(searchIdleTimerId);
     }
+  });
+
+  // Any activity in the search field resets the idle timer.
+  ["input", "focus", "keydown", "click"].forEach((evt) => {
+    el.searchInput.addEventListener(evt, scheduleSearchAutoClose);
   });
 
   el.clearFiltersBtn.addEventListener("click", () => {
