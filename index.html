@@ -57,13 +57,18 @@
           id="search-input"
           type="text"
           class="search-input"
-          placeholder="Search title or channel"
-          aria-label="Search your stash"
+          placeholder="Search, or paste a YouTube link to add"
+          aria-label="Search your stash, or paste a YouTube link to add it"
           autocomplete="off"
         />
-        <button type="submit" class="search-btn" aria-label="Search">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+        <button type="submit" class="search-btn" aria-label="Search or add">
+          <!-- Search icon (default) -->
+          <svg class="search-icon-default" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
             <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
+          </svg>
+          <!-- Plus icon (shown when the box holds a YouTube link) -->
+          <svg class="search-icon-add" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
         </button>
       </form>
@@ -199,22 +204,6 @@
             <span id="player-category" class="category-pill"></span>
           </div>
           <button id="player-remove-btn" class="btn-danger">Remove from stash</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Remove confirmation (used for playback-modal path) -->
-  <div id="confirm-modal" class="modal-overlay" hidden>
-    <div class="modal-panel modal-panel-small" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-      <div class="modal-header">
-        <h2 id="confirm-title">Remove this link?</h2>
-      </div>
-      <div class="modal-body">
-        <p>This will remove it from the stash for everyone. This can't be undone.</p>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="confirm-cancel-btn">Cancel</button>
-          <button type="button" class="btn-danger" id="confirm-remove-btn">Remove</button>
         </div>
       </div>
     </div>

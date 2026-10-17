@@ -198,6 +198,27 @@ button {
   background: var(--yt-surface-hover);
 }
 
+/* Search button icon swap: show the magnifier by default, and the + when the
+   box holds a YouTube link (header gets .search-is-url from app.js). The +
+   state also tints the button to signal that Enter will add, not search. */
+.search-icon-add {
+  display: none;
+}
+.app-header.search-is-url .search-icon-default {
+  display: none;
+}
+.app-header.search-is-url .search-icon-add {
+  display: block;
+}
+.app-header.search-is-url .search-btn {
+  background: var(--yt-accent);
+  border-color: var(--yt-accent);
+  color: #fff;
+}
+.app-header.search-is-url .search-input {
+  border-color: var(--yt-accent);
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -389,22 +410,37 @@ button {
 
 .remove-btn {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 50%;
-  background: rgba(15, 15, 15, 0.85);
+  background: rgba(15, 15, 15, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   color: #fff;
-  opacity: 0;
-  transition: opacity 150ms ease, background 150ms ease;
+  cursor: pointer;
+  /* Always visible, but understated at rest so it doesn't shout on the grid.
+     Fully revealed and reddened on hover/focus/touch. */
+  opacity: 0.72;
+  transition: opacity 150ms ease, background 150ms ease, border-color 150ms ease,
+    transform 100ms ease, box-shadow 150ms ease;
 }
 
-.remove-btn:hover {
+.remove-btn:hover,
+.remove-btn:focus-visible {
+  opacity: 1;
   background: var(--yt-accent);
+  border-color: var(--yt-accent);
+  box-shadow: 0 2px 10px rgba(255, 0, 0, 0.45);
+}
+
+.remove-btn:active {
+  transform: scale(0.9);
 }
 
 .card-meta {
@@ -467,16 +503,14 @@ button {
   .video-card:hover .card-title {
     color: #fff;
   }
+  /* The remove button is always visible now; nudge it to full opacity when
+     hovering anywhere on the card too, for a cohesive hover state. */
   .video-card:hover .remove-btn {
     opacity: 1;
   }
   .video-card:hover .thumbnail-wrap {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
-}
-
-.remove-btn:focus-visible {
-  opacity: 1;
 }
 
 /* ==========================================================================

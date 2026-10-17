@@ -58,7 +58,7 @@ function wireUpApp() {
     searchTerm: "",
     playingVideoId: null,
     playingDocId: null,
-    pendingRemoveDocId: null,
+    playingLink: null,
   };
 
   const el = {
@@ -99,10 +99,6 @@ function wireUpApp() {
     playerChannel: document.getElementById("player-channel"),
     playerCategory: document.getElementById("player-category"),
     playerRemoveBtn: document.getElementById("player-remove-btn"),
-
-    confirmModal: document.getElementById("confirm-modal"),
-    confirmCancelBtn: document.getElementById("confirm-cancel-btn"),
-    confirmRemoveBtn: document.getElementById("confirm-remove-btn"),
   };
 
 
@@ -200,12 +196,36 @@ function wireUpApp() {
   el.searchInput.addEventListener("input", () => {
     clearTimeout(searchDebounceId);
     searchDebounceId = setTimeout(() => {
+      const raw = el.searchInput.value.trim();
+      // If the box contains a YouTube link, switch to "add" affordance and
+      // stop filtering by the raw URL (which would match nothing anyway).
+      if (raw && extractVideoId(raw)) {
+        el.header.classList.add("search-is-url");
+        state.searchTerm = "";
+        renderGrid();
+        return;
+      }
+      el.header.classList.remove("search-is-url");
       state.searchTerm = el.searchInput.value;
       renderGrid();
     }, 200);
   });
-  el.searchForm.addEventListener("submit", (e) => {
+
+  // Submit (Enter): if the box holds a valid YouTube URL, add it through the
+  // same pipeline as the Add button (fetch, guess category, dedup, toast);
+  // otherwise just apply the search filter.
+  el.searchForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const raw = el.searchInput.value.trim();
+    const videoId = raw ? extractVideoId(raw) : null;
+    if (videoId) {
+      el.searchInput.value = "";
+      el.header.classList.remove("search-is-url");
+      state.searchTerm = "";
+      renderGrid();
+      await addByUrl(videoId, raw);
+      return;
+    }
     state.searchTerm = el.searchInput.value;
     renderGrid();
   });
@@ -273,8 +293,8 @@ function wireUpApp() {
         <div class="play-overlay">
           <svg viewBox="0 0 24 24" width="48" height="48" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <button class="remove-btn" aria-label="Remove ${escapeAttr(link.title)}" data-action="remove">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        <button class="remove-btn" aria-label="Remove ${escapeAttr(link.title)}" title="Remove from stash" data-action="remove">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
         </button>
       </div>
       <div class="card-meta">
@@ -290,7 +310,7 @@ function wireUpApp() {
 
     card.querySelector('[data-action="remove"]').addEventListener("click", (e) => {
       e.stopPropagation();
-      requestRemoveConfirmInline(e.currentTarget, link.id);
+      removeLink(link);
     });
 
     card.addEventListener("click", () => openPlaybackModal(link));
@@ -311,42 +331,22 @@ function wireUpApp() {
     return escapeHtml(str);
   }
 
-  // Inline remove confirm: swap icon for a checkmark/X pair for 3s.
-  function requestRemoveConfirmInline(btn, docId) {
-    if (btn.dataset.confirming === "true") return;
-    btn.dataset.confirming = "true";
-    const original = btn.innerHTML;
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
-    `;
-    btn.style.background = "var(--yt-accent)";
-    btn.setAttribute("aria-label", "Confirm remove");
-
-    const revert = () => {
-      btn.innerHTML = original;
-      btn.dataset.confirming = "false";
-      btn.style.background = "";
-    };
-
-    const timeoutId = setTimeout(revert, 3000);
-
-    const onConfirm = async (e) => {
-      e.stopPropagation();
-      clearTimeout(timeoutId);
-      btn.removeEventListener("click", onConfirm);
-      await removeLink(docId);
-    };
-    btn.addEventListener("click", onConfirm, { once: true });
-  }
-
-  async function removeLink(docId) {
+  // Instant remove, no confirmation. Captures the full link so the action
+  // toast can offer Undo (a re-add with the same fields — a new doc id and
+  // addedAt, which is fine). `link` is the object built from the snapshot.
+  async function removeLink(link) {
+    const docId = typeof link === "string" ? link : link.id;
     try {
       await deleteDoc(doc(db, "links", docId));
       if (state.playingDocId === docId) {
         closePlaybackModal();
       }
+      if (typeof link === "object" && link) {
+        showRemovedToast(link);
+      }
     } catch {
       showToast("Couldn't remove this link — try again.");
+      setTimeout(hideToast, 3000);
     }
   }
 
@@ -462,9 +462,7 @@ function wireUpApp() {
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    if (!el.confirmModal.hidden) {
-      handleModalClose("confirm-modal");
-    } else if (!el.addLinkModal.hidden) {
+    if (!el.addLinkModal.hidden) {
       handleModalClose("add-link-modal");
     } else if (!el.playbackModal.hidden) {
       handleModalClose("playback-modal");
@@ -477,9 +475,6 @@ function wireUpApp() {
       resetAddLinkForm();
     } else if (modalId === "playback-modal") {
       closePlaybackModal();
-    } else if (modalId === "confirm-modal") {
-      closeModal(el.confirmModal);
-      state.pendingRemoveDocId = null;
     }
   }
 
@@ -522,6 +517,7 @@ function wireUpApp() {
     handleUrlInput();
   });
 
+  // Modal path: validate the typed URL, then delegate to the shared add.
   async function handleUrlInput() {
     if (isAdding) return;
 
@@ -534,35 +530,48 @@ function wireUpApp() {
       return;
     }
     el.urlError.hidden = true;
-
-    // Duplicate guard: the onSnapshot listener keeps state.links in sync with
-    // the collection, so we can detect a repeat paste in-memory without an
-    // extra Firestore read. Skip the add and tell the user rather than
-    // silently creating a second document for the same video.
-    if (state.links.some((link) => link.videoId === videoId)) {
-      closeModal(el.addLinkModal);
-      resetAddLinkForm();
-      showToast("That video is already in your stash.");
-      setTimeout(hideToast, 3000);
-      return;
-    }
-
-    isAdding = true;
     el.fetchStatus.hidden = false;
 
     try {
-      await quickAddLink(videoId, rawUrl);
+      const added = await addByUrl(videoId, rawUrl);
       closeModal(el.addLinkModal);
       resetAddLinkForm();
+      if (added === "error") el.saveError.hidden = false;
+    } finally {
+      el.fetchStatus.hidden = true;
+    }
+  }
+
+  // Shared add pipeline used by both the add-link modal and the search box.
+  // Dedups against the in-memory state.links (kept in sync by onSnapshot, so
+  // no extra Firestore read), then quick-adds. Returns "added", "duplicate",
+  // or "error". `isAdding` guards against a double-add from a fast
+  // input-then-Enter sequence.
+  async function addByUrl(videoId, rawUrl) {
+    if (isAdding) return "busy";
+
+    // Duplicate guard: skip the add and notify rather than creating a second
+    // document for the same video.
+    if (state.links.some((link) => link.videoId === videoId)) {
+      showToast("That video is already in your stash.");
+      setTimeout(hideToast, 3000);
+      return "duplicate";
+    }
+
+    isAdding = true;
+    try {
+      await quickAddLink(videoId, rawUrl);
+      return "added";
     } catch (err) {
       // Log the real Firebase error (e.g. permission-denied if
       // firestore.rules hasn't been published yet, invalid-argument for a
       // malformed payload, or a network error) so the failure is
       // diagnosable in devtools instead of silent.
       console.error("quick add failed:", err);
-      el.saveError.hidden = false;
+      showToast("Couldn't add this link — check your connection and try again.");
+      setTimeout(hideToast, 3000);
+      return "error";
     } finally {
-      el.fetchStatus.hidden = true;
       isAdding = false;
     }
   }
@@ -597,14 +606,42 @@ function wireUpApp() {
   let actionToastTimerId = null;
   let actionToastDocId = null;
   let actionToastSnapshot = null; // the written fields, for delete+re-add on category change
+  let actionToastMode = null; // "added" | "removed" — controls what Undo does
 
+  function shortenTitle(title) {
+    return title.length > 40 ? title.slice(0, 39) + "…" : title;
+  }
+
+  // "Added" toast: message + inline category change + Undo (Undo deletes).
   function showActionToast(docId, title, category, fields) {
+    actionToastMode = "added";
     actionToastDocId = docId;
     actionToastSnapshot = { ...fields, title, category };
 
-    const shortTitle = title.length > 40 ? title.slice(0, 39) + "…" : title;
-    el.actionToastMsg.textContent = `Added “${shortTitle}”`;
+    el.actionToastMsg.textContent = `Added “${shortenTitle(title)}”`;
     el.actionToastCategory.value = category;
+    el.actionToastCategory.hidden = false;
+    el.actionToast.hidden = false;
+
+    clearTimeout(actionToastTimerId);
+    actionToastTimerId = setTimeout(hideActionToast, 6000);
+  }
+
+  // "Removed" toast: message + Undo (Undo re-adds). No category select.
+  function showRemovedToast(link) {
+    actionToastMode = "removed";
+    actionToastDocId = null;
+    actionToastSnapshot = {
+      videoId: link.videoId,
+      url: link.url,
+      title: link.title,
+      channel: link.channel || "",
+      thumbnailUrl: link.thumbnailUrl,
+      category: link.category,
+    };
+
+    el.actionToastMsg.textContent = `Removed “${shortenTitle(link.title)}”`;
+    el.actionToastCategory.hidden = true;
     el.actionToast.hidden = false;
 
     clearTimeout(actionToastTimerId);
@@ -615,17 +652,38 @@ function wireUpApp() {
     el.actionToast.hidden = true;
     actionToastDocId = null;
     actionToastSnapshot = null;
+    actionToastMode = null;
     clearTimeout(actionToastTimerId);
   }
 
+  async function reAddFromSnapshot(snap) {
+    return addDoc(linksRef, {
+      videoId: snap.videoId,
+      url: snap.url,
+      title: snap.title,
+      channel: snap.channel,
+      thumbnailUrl: snap.thumbnailUrl,
+      category: snap.category,
+      addedAt: serverTimestamp(),
+    });
+  }
+
   el.actionToastUndo.addEventListener("click", async () => {
+    const mode = actionToastMode;
     const docId = actionToastDocId;
+    const snap = actionToastSnapshot;
     hideActionToast();
-    if (!docId) return;
     try {
-      await deleteDoc(doc(db, "links", docId));
+      if (mode === "added") {
+        // Undo an add → delete the doc we just created.
+        if (docId) await deleteDoc(doc(db, "links", docId));
+      } else if (mode === "removed") {
+        // Undo a remove → re-add the captured link.
+        if (snap) await reAddFromSnapshot(snap);
+      }
     } catch {
-      showToast("Couldn't undo — try removing it from the grid.");
+      showToast("Couldn't undo — try again.");
+      setTimeout(hideToast, 3000);
     }
   });
 
@@ -640,15 +698,7 @@ function wireUpApp() {
 
     clearTimeout(actionToastTimerId);
     try {
-      const ref = await addDoc(linksRef, {
-        videoId: snap.videoId,
-        url: snap.url,
-        title: snap.title,
-        channel: snap.channel,
-        thumbnailUrl: snap.thumbnailUrl,
-        category: newCategory,
-        addedAt: serverTimestamp(),
-      });
+      const ref = await reAddFromSnapshot({ ...snap, category: newCategory });
       await deleteDoc(doc(db, "links", oldDocId));
       // Keep the toast open and tracking the new doc for a further change/undo.
       actionToastDocId = ref.id;
@@ -656,6 +706,7 @@ function wireUpApp() {
       actionToastTimerId = setTimeout(hideActionToast, 6000);
     } catch {
       showToast("Couldn't change the category — try again.");
+      setTimeout(hideToast, 3000);
       hideActionToast();
     }
   });
@@ -667,6 +718,7 @@ function wireUpApp() {
   function openPlaybackModal(link) {
     state.playingVideoId = link.videoId;
     state.playingDocId = link.id;
+    state.playingLink = link;
 
     el.playerWrap.innerHTML = `
       <iframe
@@ -688,26 +740,15 @@ function wireUpApp() {
     el.playerWrap.innerHTML = ""; // tears down the iframe so playback stops
     state.playingVideoId = null;
     state.playingDocId = null;
+    state.playingLink = null;
     closeModal(el.playbackModal);
   }
 
-  el.playerRemoveBtn.addEventListener("click", () => {
-    state.pendingRemoveDocId = state.playingDocId;
-    openModal(el.confirmModal);
-  });
-
-  el.confirmCancelBtn.addEventListener("click", () => {
-    state.pendingRemoveDocId = null;
-    closeModal(el.confirmModal);
-  });
-
-  el.confirmRemoveBtn.addEventListener("click", async () => {
-    const docId = state.pendingRemoveDocId;
-    closeModal(el.confirmModal);
-    state.pendingRemoveDocId = null;
-    if (docId) {
-      closePlaybackModal();
-      await removeLink(docId);
-    }
+  // Instant remove from the playback modal — no confirmation. The Undo toast
+  // (shown by removeLink) is the safety net. removeLink also tears down the
+  // playback modal when the removed doc is the one playing.
+  el.playerRemoveBtn.addEventListener("click", async () => {
+    const link = state.playingLink;
+    if (link) await removeLink(link);
   });
 }

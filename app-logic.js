@@ -106,18 +106,24 @@ export function categoryColor(category) {
 
 /**
  * Pure filter over an in-memory links array by category and search term.
- * Search matches only title and channel.
+ *
+ * Search is multi-term AND matching across title, channel, and category:
+ * the term is split on whitespace, and a link matches only if EVERY word
+ * appears (as a substring, case-insensitive) in the combined
+ * title + channel + category haystack. So "lofi guitar" matches a video
+ * whose title contains both words in any order, and "music chill" can match
+ * via the category plus the title. An empty/whitespace term matches all.
  * @param {Array<object>} links
  * @param {{category?: string, searchTerm?: string}} opts
  * @returns {Array<object>}
  */
 export function filterLinks(links, { category = "All", searchTerm = "" } = {}) {
-  const term = searchTerm.trim().toLowerCase();
+  const words = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return links.filter((link) => {
     if (category !== "All" && link.category !== category) return false;
-    if (!term) return true;
-    const haystacks = [link.title ?? "", link.channel ?? ""];
-    return haystacks.some((h) => String(h).toLowerCase().includes(term));
+    if (words.length === 0) return true;
+    const haystack = `${link.title ?? ""} ${link.channel ?? ""} ${link.category ?? ""}`.toLowerCase();
+    return words.every((word) => haystack.includes(word));
   });
 }
 

@@ -134,8 +134,28 @@ Adding is one step — paste a link and it's saved immediately, no confirmation.
    - **Category dropdown** — change the guessed category on the spot (since
      documents are immutable, this re-adds the link under the new category).
    - **Undo** — removes the link you just added.
-4. Removing a link deletes its document. Every add, category change, and remove
-   syncs to every open client in real time.
+4. Removing a link deletes its document instantly — no confirmation. A "Removed
+   … Undo" toast appears for a few seconds so a misclick is recoverable (Undo
+   re-adds the link). Every add, category change, and remove syncs to every open
+   client in real time.
+
+### Two ways to add, two ways to remove
+
+- **Add:** the **Add** button (paste a link in the modal), or paste a YouTube
+  link straight into the **search box** and press Enter — both run the same
+  pipeline (fetch, guess category, dedup, toast). When the search box holds a
+  link, its icon turns into a **+** to signal that Enter adds rather than
+  searches.
+- **Remove:** the trash icon on each card (always visible, one tap), or the
+  **Remove from stash** button in the playback view. Both remove instantly with
+  an Undo toast.
+
+### Search
+
+Search matches across **title, channel, and category**, and is **multi-term**:
+every word you type must appear somewhere in the link (in any order). So
+`lofi guitar` finds a video whose title has both words, and `music chill` can
+match via the category plus the title.
 
 ## Firebase configuration
 

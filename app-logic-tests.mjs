@@ -209,4 +209,35 @@ test("filterLinks: no matches returns empty array", () => {
   assert.strictEqual(result.length, 0);
 });
 
+test("filterLinks: multi-term AND matches words in any order", () => {
+  // "beats lo-fi" — both words present in title "Lo-fi Beats", order-independent.
+  const result = filterLinks(sampleLinks, { category: "All", searchTerm: "beats lo-fi" });
+  assert.strictEqual(result.length, 1);
+  assert.strictEqual(result[0].id, "1");
+});
+
+test("filterLinks: multi-term requires ALL words to match", () => {
+  // "pasta react" — no single link has both words, so nothing matches.
+  const result = filterLinks(sampleLinks, { category: "All", searchTerm: "pasta react" });
+  assert.strictEqual(result.length, 0);
+});
+
+test("filterLinks: search matches category name", () => {
+  // "music" isn't in the title/channel of link 1, only its category.
+  const result = filterLinks(sampleLinks, { category: "All", searchTerm: "music" });
+  assert.strictEqual(result.length, 1);
+  assert.strictEqual(result[0].id, "1");
+});
+
+test("filterLinks: term spanning title + category matches", () => {
+  // "cooking pasta" — "pasta" from title, "cooking" from both title and category.
+  const result = filterLinks(sampleLinks, { category: "All", searchTerm: "cooking pasta" });
+  assert.strictEqual(result.length, 1);
+  assert.strictEqual(result[0].id, "3");
+});
+
+test("filterLinks: whitespace-only term matches all", () => {
+  assert.strictEqual(filterLinks(sampleLinks, { searchTerm: "   " }).length, 3);
+});
+
 console.log(`\n${passed} test(s) passed.`);
