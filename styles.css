@@ -338,6 +338,16 @@ button {
   padding: 24px;
 }
 
+/* A `display` rule overrides the browser's default [hidden]{display:none},
+   so elements toggled via the `hidden` attribute in app.js (the skeleton
+   grid, the real grid, and both empty states) need an explicit override —
+   otherwise `el.skeletonGrid.hidden = true` and `el.emptyVault.hidden = true`
+   have no visual effect and they stack on top of the real cards. */
+.card-grid[hidden],
+.empty-state[hidden] {
+  display: none;
+}
+
 /* ==========================================================================
    Video card
    ========================================================================== */
