@@ -120,6 +120,8 @@ Adding is one step — paste a link and it's saved immediately, no confirmation.
    `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/shorts/`, and
    `youtube.com/live/` forms. A valid link is added the moment you finish
    pasting (or press Enter); an unrecognized link shows an inline error instead.
+   If the same video is already in the stash, the add is skipped with a "That
+   video is already in your stash" notice rather than creating a duplicate.
 2. The app fetches the title and channel from YouTube oEmbed (no key), guesses a
    category from them, and writes the document. The thumbnail comes from the
    video ID directly, so it always works even if oEmbed is unavailable. If

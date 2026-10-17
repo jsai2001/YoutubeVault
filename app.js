@@ -511,6 +511,18 @@ function wireUpApp() {
     }
     el.urlError.hidden = true;
 
+    // Duplicate guard: the onSnapshot listener keeps state.links in sync with
+    // the collection, so we can detect a repeat paste in-memory without an
+    // extra Firestore read. Skip the add and tell the user rather than
+    // silently creating a second document for the same video.
+    if (state.links.some((link) => link.videoId === videoId)) {
+      closeModal(el.addLinkModal);
+      resetAddLinkForm();
+      showToast("That video is already in your stash.");
+      setTimeout(hideToast, 3000);
+      return;
+    }
+
     isAdding = true;
     el.fetchStatus.hidden = false;
 
