@@ -1,4 +1,4 @@
-// Vault — YouTube Link Vault
+// TubeStash — YouTube Link Vault
 // Firebase JS SDK v10.x via CDN ES modules. No analytics, no auth, no API key.
 //
 // Pure, DOM/Firebase-free helpers live in app-logic.js so they can be unit

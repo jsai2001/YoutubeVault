@@ -1,8 +1,8 @@
-# Vault — YouTube Link Vault
+# TubeStash
 
 A shared, real-time synced library of YouTube links with a YouTube-lookalike dark
 UI. Paste a link, the app guesses a category for you, and it shows up instantly on
-every device watching the same vault. No login, no build step, no YouTube API key.
+every device watching the same stash. No login, no build step, no YouTube API key.
 
 - **Plain static site** — just `index.html`, `styles.css`, `app.js`. Drag the
   folder onto Netlify or open it through any static server. Zero config.
@@ -14,7 +14,7 @@ every device watching the same vault. No login, no build step, no YouTube API ke
 - **Auto-guessed category, with override.** Category is a dropdown from a fixed
   preset, pre-selected by matching keywords in the title/channel — you can
   change it before saving if the guess is wrong.
-- **No authentication** — this is an open, shared vault. Anyone with the page can
+- **No authentication** — this is an open, shared stash. Anyone with the page can
   read, add, and remove links.
 
 ## Project layout
