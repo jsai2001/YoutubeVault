@@ -35,6 +35,27 @@ every device watching the same stash. No login, no build step, no YouTube API ke
 | `app-logic-tests.mjs`| Node unit tests for the pure helpers. Not shipped to users.        |
 | `firestore.rules`    | Firestore security rules to paste into the Firebase Console.       |
 | `netlify.toml`       | Netlify static config (publish = repo root, no build command).     |
+| `manifest.json`      | PWA manifest — makes the site installable as a standalone app.     |
+| `icon.svg`           | Source app/brand mark (YouTube-style, our own geometry).           |
+| `apple-touch-icon.png` / `icon-192.png` / `icon-512.png` / `favicon-32.png` | Rasterized icons for iOS home screen, PWA, and favicon fallback. |
+
+## Install as a standalone app
+
+The site is a PWA, so it can be installed to a home screen and launches
+fullscreen with no browser chrome.
+
+**iOS (Safari):** open <https://tubestash.netlify.app/> → tap the **Share**
+button → **Add to Home Screen**. iOS has no one-tap install prompt (an Apple
+limitation), so the Share-sheet step is required. The app then opens fullscreen
+with the TubeStash icon.
+
+**Android (Chrome) / desktop:** use the browser's **Install app** / **Add to
+Home screen** option in the address bar or menu.
+
+> The icons use a YouTube-style play mark drawn in our own geometry — not
+> Google's trademarked logo — so the app is visually familiar without using the
+> actual YouTube brand assets. To regenerate the PNGs from `icon.svg` on macOS:
+> `qlmanage -t -s 1024 -o /tmp icon.svg` then `sips -z 180 180 /tmp/icon.svg.png --out apple-touch-icon.png` (repeat at 192/512/32).
 
 ## Run locally
 

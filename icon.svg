@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- TubeStash app icon: a YouTube-style play mark in our own geometry
+       (not Google's logo). Dark rounded tile + red play badge + white triangle. -->
+  <rect width="512" height="512" rx="114" fill="#0f0f0f"/>
+  <rect x="96" y="146" width="320" height="220" rx="56" fill="#ff0000"/>
+  <polygon points="226,222 310,256 226,290" fill="#ffffff"/>
+</svg>
